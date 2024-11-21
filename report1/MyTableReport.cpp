@@ -7,6 +7,24 @@
 #include <tuple>
 #include <string>
 
+
+MTAPIRES AddColumn(IMTReportAPI* api, IMTDatasetColumn* column, const wchar_t* name, UINT column_id, size_t offset, IMTDatasetColumn::EnType type) {
+    column->Clear();
+    column->Name(name);
+    column->ColumnID(column_id);
+    column->Offset(offset);
+    column->Type(type);
+    MTAPIRES res = api->TableColumnAdd(column);
+    return res;
+}
+
+void CleanUpResources(IMTReportAPI* api,IMTDatasetColumn* column, IMTPositionArray* positions, IMTConParam* login_param, UINT64* logins) {
+    if (column) column->Release();
+    if (positions) positions->Release();
+    if (login_param) login_param->Release();
+    if (logins) api->Free(logins);
+}
+
 //+------------------------------------------------------------------+
 //| Plugin description structure                                       |
 //+------------------------------------------------------------------+
@@ -22,7 +40,6 @@ const MTReportInfo CMyTableReport::s_info =
  MTReportInfo::TYPE_TABLE,                  // Report type (unchanged)
  { 0 },                                     // Reserved initialization
  {
-
      { MTReportParam::TYPE_GROUPS, MTAPI_PARAM_GROUPS, L"*" }, 
      { MTReportParam::TYPE_INT, L"Login", 0},
 
@@ -82,19 +99,17 @@ MTAPIRES CMyTableReport::Generate(const UINT type, IMTReportAPI* api)
         }
         if ((positions = api->PositionCreateArray()) == NULL)
         {
-            column->Release();
+            CleanUpResources(api, column, positions, login_param, logins);
             return(MT_RET_ERR_MEM);
         }
         if ((current_position = api->PositionCreate()) == NULL)
         {
-            column->Release();
-            positions->Release();
+            CleanUpResources(api, column, positions, login_param, logins);
             return(MT_RET_ERR_MEM);
         }
         if ((login_param = api->ParamCreate()) == NULL)
         {
-            column->Release();
-            positions->Release();
+            CleanUpResources(api, column, positions, login_param, logins);
             return(MT_RET_ERR_MEM);
         }
 
@@ -105,120 +120,59 @@ MTAPIRES CMyTableReport::Generate(const UINT type, IMTReportAPI* api)
         column->Offset(offsetof(TableRecord, symbol));
         column->Type(IMTDatasetColumn::TYPE_STRING);
         column->Size(MtFieldSize(TableRecord, symbol));
-        if ((res = api->TableColumnAdd(column)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(res);
-        }
-        //---
+        if (res = api->TableColumnAdd(column) != MT_RET_OK)
+            return res;
 
         //--- preparing the column 2
-        column->Clear();
-        column->Name(L"Total Positions");
-        column->ColumnID(2);
-        column->Offset(offsetof(TableRecord, total_positions));
-        column->Type(IMTDatasetColumn::TYPE_UINT32);
-        if ((res = api->TableColumnAdd(column)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(res);
+        if (res = AddColumn(api, column, L"Total Positions", 2, offsetof(TableRecord, total_positions), IMTDatasetColumn::TYPE_UINT32) != MT_RET_OK) {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
         }
-        //---
     
-        //--- preparing the column 3
-        column->Clear();
-        column->Name(L"Buy Volumne");
-        column->ColumnID(3);
-        column->Offset(offsetof(TableRecord, buy_volume));
-        column->Type(IMTDatasetColumn::TYPE_DOUBLE);
-        if ((res = api->TableColumnAdd(column)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(res);
+        //--- preparing the column TYPE_DOUBLE
+        if (res = AddColumn(api, column, L"Buy Volume", 3, offsetof(TableRecord, buy_volume), IMTDatasetColumn::TYPE_DOUBLE) != MT_RET_OK) {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
         }
-        //---
     
         //--- preparing the column 4
-        column->Clear();
-        column->Name(L"Buy Price");
-        column->ColumnID(4);
-        column->Offset(offsetof(TableRecord, buy_price));
-        column->Type(IMTDatasetColumn::TYPE_DOUBLE);
-        if ((res = api->TableColumnAdd(column)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(res);
+        if (res = AddColumn(api, column, L"Buy Price", 4, offsetof(TableRecord, buy_price), IMTDatasetColumn::TYPE_DOUBLE) != MT_RET_OK) {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
         }
-        //---
    
         //--- preparing the column 5
-        column->Clear();
-        column->Name(L"Sell Volume");
-        column->ColumnID(5);
-        column->Offset(offsetof(TableRecord, sell_volume));
-        column->Type(IMTDatasetColumn::TYPE_DOUBLE);
-        if ((res = api->TableColumnAdd(column)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(res);
+        if (res = AddColumn(api, column, L"Sell Volume", 5, offsetof(TableRecord, sell_volume), IMTDatasetColumn::TYPE_DOUBLE) != MT_RET_OK) {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
         }
-        //---
 
         //--- preparing the column 6
-        column->Clear();
-        column->Name(L"Sell Price");
-        column->ColumnID(6);
-        column->Offset(offsetof(TableRecord, sell_price));
-        column->Type(IMTDatasetColumn::TYPE_DOUBLE);
-        if ((res = api->TableColumnAdd(column)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(res);
+        if (res = AddColumn(api, column, L"Sell Price", 6, offsetof(TableRecord, sell_price), IMTDatasetColumn::TYPE_DOUBLE) != MT_RET_OK) {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
         }
-        //---
 
         //--- preparing the column 7
-        column->Clear();
-        column->Name(L"Net Volume");
-        column->ColumnID(7);
-        column->Offset(offsetof(TableRecord, net_volume));
-        column->Type(IMTDatasetColumn::TYPE_DOUBLE);
-        if ((res = api->TableColumnAdd(column)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(res);
-        }
-        //---
-   
-        if ((res = api->ParamLogins(logins, total_logins)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(MT_RET_ERR_NOTFOUND);
-        }
-        if ((res = api->ParamGet(L"Login", login_param)) != MT_RET_OK)
-        {
-            column->Release();
-            positions->Release();
-            login_param->Release();
-            return(MT_RET_ERR_NOTFOUND);
+        if (res = AddColumn(api, column, L"Net Volume", 7, offsetof(TableRecord, net_volume), IMTDatasetColumn::TYPE_DOUBLE) != MT_RET_OK) {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
         }
 
+
+        //--- Get the logins and its total
+        if ((res = api->ParamLogins(logins, total_logins)) != MT_RET_OK)
+        {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
+        }
+
+        //--- Get the parameter Login
+        if ((res = api->ParamGet(L"Login", login_param)) != MT_RET_OK)
+        {
+            CleanUpResources(api, column, positions, login_param, logins);
+            return res;
+        }
 
         if (logins && total_logins)
         {
@@ -257,8 +211,7 @@ MTAPIRES CMyTableReport::Generate(const UINT type, IMTReportAPI* api)
                                         std::get<3>(summary[key]) += current_volume;
                                         std::get<4>(summary[key]) += current_price;
                                     }
-                                }
-                               
+                                }   
                             }
                         }
                     }
@@ -281,11 +234,7 @@ MTAPIRES CMyTableReport::Generate(const UINT type, IMTReportAPI* api)
                 res = api->TableRowWrite(&record, sizeof(record));         
             }
 
-            column->Release();              
-            positions->Release(); 
-            login_param->Release();
-            api->Free(logins);
-
+            CleanUpResources(api, column, positions, login_param, logins);
             return(MT_RET_OK);
         }
         else {
@@ -293,21 +242,12 @@ MTAPIRES CMyTableReport::Generate(const UINT type, IMTReportAPI* api)
         }
     }
     catch (const std::exception& e) {
-        if (column != nullptr) {
-            column->Release();
-        }
-        if (positions != nullptr) {
-            positions->Release();
-        }
-        if (login_param != nullptr) {
-            login_param->Release();
-        }
-
-        api->Free(logins);
         if (api) {
+            CleanUpResources(api, column, positions, login_param, logins);
             std::wstring_convert<std::codecvt_utf8<wchar_t>> converter; 
-            std::wstring errorMsg = L"An error occurred: " + converter.from_bytes(e.what()); 
+            std::wstring errorMsg = L"An error occurred: " + converter.from_bytes(e.what() + MTLogErr);
             api->LoggerOut(2, errorMsg.c_str()); 
+     
         }
     }
 }
